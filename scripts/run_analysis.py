@@ -272,6 +272,281 @@ def download_and_transcribe(top_reels, root, model="small.en"):
             print(f"  {sc}: {status} · {tlen} chars")
 
 
+# ---------------- Hook + insights analysis (dynamic) ----------------
+
+_STOP_OPEN = {"the", "a", "an", "and", "or", "but", "so", "of", "for", "to", "in", "on", "at", "is", "are"}
+
+def _normalize_word(w):
+    """Lowercase, strip punct/possessives. Keep contractions readable."""
+    w = re.sub(r"[^\w']", "", w.lower())
+    return w
+
+
+def compute_opening_phrases(top_cohort, n_shown=8):
+    """Find the most frequent opening phrases across hooks in the top cohort.
+
+    Groups hooks by their first 3 meaningful words (skipping leading articles),
+    returns the top N by count plus one example hook for each.
+    """
+    from collections import Counter
+    phrase_bucket = Counter()
+    examples = {}
+    for r in top_cohort:
+        hook = (r.get("hook") or "").strip()
+        if not hook or len(hook) < 8:
+            continue
+        # Take first ~6 tokens, strip leading stop words, keep first 3 meaningful words
+        tokens = re.findall(r"[A-Za-z']+", hook)
+        meaningful = []
+        for t in tokens:
+            nw = _normalize_word(t)
+            if not meaningful and nw in _STOP_OPEN:
+                continue
+            meaningful.append(nw)
+            if len(meaningful) == 3:
+                break
+        if len(meaningful) < 2:
+            continue
+        key = " ".join(meaningful)
+        phrase_bucket[key] += 1
+        examples.setdefault(key, hook)
+
+    out = []
+    for phrase, count in phrase_bucket.most_common(n_shown):
+        if count < 2:
+            break  # only surface recurring phrases (count >= 2)
+        out.append({
+            "phrase": phrase,
+            "count": count,
+            "example": examples[phrase][:180],
+        })
+    return out
+
+
+def compute_structural_patterns(top_cohort):
+    """Classify each hook into universal structural families and return counts.
+
+    Families are non-exclusive — a hook can match multiple (e.g. a question
+    that also directly addresses 'you'). Always relevant regardless of topic.
+    """
+    hooks = [(r.get("hook") or "").strip() for r in top_cohort if (r.get("hook") or "").strip()]
+    total = len(hooks)
+    if total == 0:
+        return []
+
+    def count(pred):
+        return sum(1 for h in hooks if pred(h))
+
+    def example(pred):
+        for h in hooks:
+            if pred(h):
+                return h[:180]
+        return ""
+
+    patterns = [
+        {
+            "name": "Question opener",
+            "desc": "ends with ? or starts with have/did/do/what/why/how",
+            "pred": lambda h: h.rstrip().endswith("?") or bool(re.match(r"^(have|did|do|does|what|why|how|can|should)\b", h, re.I)),
+        },
+        {
+            "name": "Direct address (\"you\")",
+            "desc": "opens with you/your/you're",
+            "pred": lambda h: bool(re.match(r"^(you['\u2019]?(re|ve|ll)?|your|if you)\b", h, re.I)),
+        },
+        {
+            "name": "Listicle / numbered",
+            "desc": "contains N + counted noun or 'here are N'",
+            "pred": lambda h: bool(re.search(r"\b(one|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+(things|reasons|ways|tips|levels|signs|rules|steps|experts|videos|lectures|skills)\b", h, re.I)) or bool(re.match(r"^(here (are|\'s)|these|top \d)", h, re.I)),
+        },
+        {
+            "name": "Data-backed claim",
+            "desc": "contains a specific number (N%, N jobs, 1,700 posts…)",
+            "pred": lambda h: bool(re.search(r"\d+\s?(%|percent|jobs|posts|roles|videos|reels|hours|cases|reports|interviews|people|creators)\b", h, re.I)),
+        },
+        {
+            "name": "Imperative / command",
+            "desc": "starts with a verb telling the viewer what to do",
+            "pred": lambda h: bool(re.match(r"^(stop|start|use|copy|steal|watch|try|check|learn|build|follow|don'?t|never|always)\b", h, re.I)),
+        },
+        {
+            "name": "News / novelty",
+            "desc": "references a recent release, launch, or 'just announced'",
+            "pred": lambda h: bool(re.search(r"\b(just (announced|dropped|launched|released)|can now|new|today|this week)\b", h, re.I)),
+        },
+        {
+            "name": "Personal / first-person",
+            "desc": "opens with I/my/we/our",
+            "pred": lambda h: bool(re.match(r"^(i['\u2019]?m?|my|i\s|we|our)\b", h, re.I)),
+        },
+        {
+            "name": "Contrarian framing",
+            "desc": "most people / nobody / everyone / but actually",
+            "pred": lambda h: bool(re.search(r"\b(most (people|of you)|everyone|nobody|no one|but actually|the truth is)\b", h, re.I)),
+        },
+    ]
+
+    out = []
+    for p in patterns:
+        c = count(p["pred"])
+        if c > 0:
+            out.append({
+                "name": p["name"],
+                "desc": p["desc"],
+                "count": c,
+                "pct": round(100 * c / total, 1),
+                "example": example(p["pred"]),
+            })
+    out.sort(key=lambda x: x["count"], reverse=True)
+    return out
+
+
+def compute_insights(all_data, top_cohort, top_n, metrics, structural_patterns, opening_phrases):
+    """Produce a structured strategic analysis: working, not working, double down, experiment.
+
+    Each bullet is a dict with {headline, detail} — short, specific, data-backed.
+    """
+    from collections import Counter
+    working, not_working, double_down, experiment = [], [], [], []
+
+    # ---------- Metric multipliers: which engagement axis is distinctive? ----------
+    ratios = {}
+    for name, (top_v, all_v) in metrics.items():
+        if all_v and all_v > 0:
+            ratios[name] = top_v / all_v
+    if ratios:
+        top_metric, top_mult = max(ratios.items(), key=lambda kv: kv[1])
+        low_metric, low_mult = min(ratios.items(), key=lambda kv: kv[1])
+        working.append({
+            "headline": f"{top_metric.capitalize()} is your sharpest signal",
+            "detail": f"Top-{top_n} average {top_metric} are {top_mult:.1f}× baseline — the widest gap of any metric. Whatever you're doing here, keep it.",
+        })
+        if top_mult / max(low_mult, 0.01) > 2 and low_mult < 2:
+            not_working.append({
+                "headline": f"{low_metric.capitalize()} lags the rest",
+                "detail": f"Your top reels outperform on every metric, but {low_metric} only reach {low_mult:.1f}× baseline vs {top_mult:.1f}× on {top_metric}. The {low_metric} axis is undertuned.",
+            })
+
+    # ---------- Duration analysis ----------
+    durs = [r.get("duration_s") for r in top_cohort if r.get("duration_s")]
+    if durs:
+        buckets = {"<30s": 0, "30-45s": 0, "45-60s": 0, "60-90s": 0, ">90s": 0}
+        for d in durs:
+            if d < 30: buckets["<30s"] += 1
+            elif d < 45: buckets["30-45s"] += 1
+            elif d < 60: buckets["45-60s"] += 1
+            elif d < 90: buckets["60-90s"] += 1
+            else: buckets[">90s"] += 1
+        dominant = max(buckets.items(), key=lambda kv: kv[1])
+        if dominant[1] >= max(2, len(durs) // 3):
+            working.append({
+                "headline": f"{dominant[0]} is your sweet spot",
+                "detail": f"{dominant[1]} of your top {len(durs)} transcribed reels are in this duration band. Shorter cuts over-index per-second; longer ones rarely break through.",
+            })
+        weak = [k for k, v in buckets.items() if v == 0]
+        if ">90s" in weak or "60-90s" in weak:
+            not_working.append({
+                "headline": "Long reels rarely break through",
+                "detail": "Almost none of your top performers exceed 60 seconds. Tighten scripts; every second of runtime past ~55s is fighting attention decay.",
+            })
+
+    # ---------- CTA analysis ----------
+    cta_re = re.compile(r"comment\s+[\"']?\w+[\"']?", re.I)
+    has_cta = [r for r in top_cohort if cta_re.search((r.get("caption") or "") + " " + (r.get("cta_tail") or ""))]
+    no_cta = [r for r in top_cohort if not cta_re.search((r.get("caption") or "") + " " + (r.get("cta_tail") or ""))]
+    if has_cta and no_cta:
+        avg_with = sum(r["comments"] for r in has_cta) / len(has_cta)
+        avg_without = sum(r["comments"] for r in no_cta) / len(no_cta)
+        if avg_with > avg_without * 1.3:
+            working.append({
+                "headline": "\"Comment [keyword]\" CTAs are doing heavy lifting",
+                "detail": f"{len(has_cta)} of your top {len(top_cohort)} reels use a comment-keyword CTA. Those average {avg_with:,.0f} comments vs {avg_without:,.0f} on reels without one ({avg_with/max(avg_without,1):.1f}×).",
+            })
+            if len(no_cta) >= 3:
+                double_down.append({
+                    "headline": "Add a comment CTA to every reel",
+                    "detail": f"{len(no_cta)} of your top reels don't use one and still made the cut — but they under-index on comments. A distinctive keyword per lecture unlocks DM-funnel tracking.",
+                })
+
+    # ---------- Structural pattern winners ----------
+    if structural_patterns:
+        strong = [p for p in structural_patterns if p["pct"] >= 30]
+        weak = [p for p in structural_patterns if p["pct"] <= 10]
+        if strong:
+            top_p = strong[0]
+            working.append({
+                "headline": f"\"{top_p['name']}\" hooks dominate",
+                "detail": f"{top_p['pct']}% of your top hooks use this pattern — {top_p['desc']}. It's the format your audience has voted for.",
+            })
+        if weak:
+            # Pattern that IS present in some top reels but underused
+            candidates = [p for p in structural_patterns if 5 <= p["pct"] <= 20]
+            if candidates:
+                c = candidates[0]
+                experiment.append({
+                    "headline": f"Test more \"{c['name']}\" hooks",
+                    "detail": f"Only {c['pct']}% of your top reels use this format — {c['desc']} — but it's working when you do. Worth 2-3 test reels to see if you can scale it.",
+                })
+
+    # ---------- Opening phrase reuse ----------
+    if opening_phrases and opening_phrases[0]["count"] >= 3:
+        top_phrase = opening_phrases[0]
+        double_down.append({
+            "headline": f"You've codified a winning opener: \"{top_phrase['phrase']}…\"",
+            "detail": f"This phrase appears in {top_phrase['count']} of your top hooks. Script variations of it into your backlog — it's a proven pattern.",
+        })
+
+    # ---------- Posting cadence / recency ----------
+    dates = sorted([r["timestamp"] for r in all_data if r.get("timestamp")])
+    top_dates = sorted([r["timestamp"] for r in top_cohort if r.get("timestamp")])
+    if len(dates) >= 10 and top_dates:
+        mid = dates[len(dates) // 2]
+        recent_top = sum(1 for d in top_dates if d >= mid)
+        if recent_top / max(len(top_dates), 1) > 0.65:
+            working.append({
+                "headline": "Your recent reels are winning more",
+                "detail": f"{recent_top} of your top {len(top_dates)} reels were posted in the second half of the date range — whatever you've been tuning recently, it's working.",
+            })
+        elif recent_top / max(len(top_dates), 1) < 0.35:
+            not_working.append({
+                "headline": "Recent reels under-represent in the top",
+                "detail": f"Only {recent_top} of your top {len(top_dates)} reels were posted in the second half of the date range — something in the recent playbook has slipped.",
+            })
+
+    # ---------- Caption keyword concentration ----------
+    cap_tokens = Counter()
+    for r in top_cohort:
+        for w in re.findall(r"[A-Za-z]{3,}", (r.get("caption") or "").lower()):
+            if w in _STOP_OPEN or len(w) < 3: continue
+            cap_tokens[w] += 1
+    all_tokens = Counter()
+    for r in all_data:
+        for w in re.findall(r"[A-Za-z]{3,}", (r.get("caption") or "").lower()):
+            if w in _STOP_OPEN or len(w) < 3: continue
+            all_tokens[w] += 1
+    for kw, top_count in cap_tokens.most_common(6):
+        if top_count < 4:
+            continue
+        all_count = all_tokens.get(kw, 0)
+        if all_count == 0:
+            continue
+        top_rate = top_count / max(len(top_cohort), 1)
+        all_rate = all_count / max(len(all_data), 1)
+        if top_rate > all_rate * 1.5 and top_rate > 0.15:
+            double_down.append({
+                "headline": f"Topic \"{kw}\" is a runaway winner",
+                "detail": f"\"{kw}\" appears in {top_count}/{len(top_cohort)} top reels vs {all_count}/{len(all_data)} overall. It's {top_rate/all_rate:.1f}× over-represented in your top.",
+            })
+            break  # one caption winner is enough
+
+    return {
+        "working": working[:4],
+        "not_working": not_working[:3],
+        "double_down": double_down[:3],
+        "experiment": experiment[:3],
+    }
+
+
 # ---------------- Report builder ----------------
 
 def build_report(ranked, root, top_n=25):
@@ -353,6 +628,33 @@ def build_report(ranked, root, top_n=25):
     top_cohort = dashboard_data[:top_n_effective]
     top_durs = [r["duration_s"] for r in top_cohort if r["duration_s"]]
     dates = sorted([r["timestamp"] for r in dashboard_data if r.get("timestamp")])
+
+    opening_phrases = compute_opening_phrases(top_cohort)
+    structural_patterns = compute_structural_patterns(top_cohort)
+    topN_avg_views = avg([r["views"] for r in top_cohort])
+    topN_avg_comments = avg([r["comments"] for r in top_cohort])
+    topN_avg_saves = avg([r["saves"] for r in top_cohort])
+    topN_avg_shares = avg([r["shares"] for r in top_cohort])
+    topN_avg_likes = avg([r["likes"] for r in top_cohort])
+    all_avg_views = avg([r["views"] for r in dashboard_data])
+    all_avg_comments = avg([r["comments"] for r in dashboard_data])
+    all_avg_saves = avg([r["saves"] for r in dashboard_data])
+    all_avg_shares = avg([r["shares"] for r in dashboard_data])
+    all_avg_likes = avg([r["likes"] for r in dashboard_data])
+
+    insights = compute_insights(
+        dashboard_data, top_cohort, top_n_effective,
+        metrics={
+            "views": (topN_avg_views, all_avg_views),
+            "comments": (topN_avg_comments, all_avg_comments),
+            "saves": (topN_avg_saves, all_avg_saves),
+            "shares": (topN_avg_shares, all_avg_shares),
+            "likes": (topN_avg_likes, all_avg_likes),
+        },
+        structural_patterns=structural_patterns,
+        opening_phrases=opening_phrases,
+    )
+
     summary = {
         "account": ranked[0].get("account_name", "") if ranked else "",
         "total_reels": len(dashboard_data),
@@ -361,17 +663,20 @@ def build_report(ranked, root, top_n=25):
         "date_latest": dates[-1] if dates else "",
         "topN_avg_duration_s": avg(top_durs),
         "topN_median_duration_s": sorted(top_durs)[len(top_durs)//2] if top_durs else 0,
-        "topN_avg_views": avg([r["views"] for r in top_cohort]),
-        "topN_avg_comments": avg([r["comments"] for r in top_cohort]),
-        "topN_avg_saves": avg([r["saves"] for r in top_cohort]),
-        "topN_avg_shares": avg([r["shares"] for r in top_cohort]),
-        "topN_avg_likes": avg([r["likes"] for r in top_cohort]),
-        "all_avg_views": avg([r["views"] for r in dashboard_data]),
-        "all_avg_comments": avg([r["comments"] for r in dashboard_data]),
-        "all_avg_saves": avg([r["saves"] for r in dashboard_data]),
-        "all_avg_shares": avg([r["shares"] for r in dashboard_data]),
-        "all_avg_likes": avg([r["likes"] for r in dashboard_data]),
+        "topN_avg_views": topN_avg_views,
+        "topN_avg_comments": topN_avg_comments,
+        "topN_avg_saves": topN_avg_saves,
+        "topN_avg_shares": topN_avg_shares,
+        "topN_avg_likes": topN_avg_likes,
+        "all_avg_views": all_avg_views,
+        "all_avg_comments": all_avg_comments,
+        "all_avg_saves": all_avg_saves,
+        "all_avg_shares": all_avg_shares,
+        "all_avg_likes": all_avg_likes,
         "transcripts_complete": sum(1 for r in dashboard_data if r["transcript"]),
+        "opening_phrases": opening_phrases,
+        "structural_patterns": structural_patterns,
+        "insights": insights,
     }
     with open(output / "summary.json", "w") as f:
         json.dump(summary, f, indent=2)
