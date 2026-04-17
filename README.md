@@ -35,35 +35,43 @@ git clone https://github.com/<you>/instagram-reels-analysis ~/.claude/skills/ins
 
 ## Usage
 
-Just say one of these in Claude Code:
+### 1. Put your Windsor API key in a `.env` file
+
+Create a file named `.env` in the directory where you want the analysis to run. Add:
+
+```
+WINDSOR_API_KEY=your_actual_key_here
+```
+
+**The key is never accepted via command-line flag or chat paste.** Both vectors leak keys (shell history, `ps` output, agent transcripts). Local `.env` only.
+
+### 2. Run the skill
+
+In Claude Code, just say one of these:
 - *"analyze my Instagram reels"*
 - *"Instagram deep dive"*
 - *"find my top performing reels"*
 - *"what's working on my Instagram"*
 
-Claude looks for a Windsor API key in this order:
-1. `WINDSOR_API_KEY=...` in a `.env` file in the current directory
-2. `~/.config/windsor/api_key` or `~/.windsor_api_key`
-3. `$WINDSOR_API_KEY` environment variable
-4. Prompts you to paste it
+Or invoke the orchestrator directly (it auto-loads `.env` from the working directory):
 
-Or invoke the orchestrator directly:
 ```bash
+cd /path/to/directory/with/.env
 python3 ~/.claude/skills/instagram-reels-analysis/scripts/run_analysis.py \
-  --api-key "$WINDSOR_API_KEY" \
-  --output-dir ./instagram-analysis \
-  --top-n 25
+  --output-dir ./instagram-analysis
 ```
 
 ### Flags
 | Flag | Default | Notes |
 |------|---------|-------|
-| `--api-key` | *(required)* | Windsor.ai Instagram connector key |
 | `--output-dir` | *(required)* | Where to write artifacts |
+| `--env-file` | `.env` in cwd | Path to the file containing `WINDSOR_API_KEY=...` |
 | `--top-n` | `25` | How many reels to download + transcribe |
 | `--whisper-model` | `small.en` | `tiny.en`/`base.en`/`small.en`/`medium.en` — tradeoff speed vs. quality |
 | `--date-from` | auto (2 yrs back) | `YYYY-MM-DD` |
 | `--date-to` | today | `YYYY-MM-DD` |
+
+> `--api-key` is intentionally **not accepted**. The script exits with an error if you try — to protect your key from shell history and process listings.
 
 ### Runtime
 - Windsor fetches: 5–15 min (chunked, with cooldowns)

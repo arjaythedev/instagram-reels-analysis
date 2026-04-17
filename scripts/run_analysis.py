@@ -3,7 +3,12 @@
 End-to-end Instagram Reels analysis pipeline.
 
 Usage:
-    python3 run_analysis.py --api-key KEY --output-dir DIR [--top-n 25]
+    python3 run_analysis.py --output-dir DIR [--top-n 25]
+
+The Windsor API key is NEVER passed on the command line or via chat. It is
+loaded from a local .env file (or the WINDSOR_API_KEY environment variable).
+Command-line passing is rejected to prevent the key leaking into shell history
+or process lists.
 
 Fetches reels from Windsor.ai, ranks by weighted composite score, downloads the
 top N, transcribes them with OpenAI Whisper (local), and builds a CSV +
@@ -717,15 +722,71 @@ def detect_account_date_range(api_key, out_dir):
     return two_years_ago, today.isoformat()
 
 
+def _load_dotenv(path):
+    """Minimal .env parser: KEY=VALUE, '#' for comments. Returns dict."""
+    out = {}
+    if not path.exists():
+        return out
+    for raw in path.read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        k = k.strip()
+        v = v.strip().strip('"').strip("'")
+        if k:
+            out[k] = v
+    return out
+
+
+def _resolve_api_key(env_file):
+    """Load WINDSOR_API_KEY from .env (preferred), then fall back to process env.
+
+    Never accepts the key on the command line — that would leak it into shell
+    history and `ps` output. Never echoes the key in error messages.
+    """
+    env_path = Path(env_file).expanduser().resolve()
+    env = _load_dotenv(env_path)
+    key = env.get("WINDSOR_API_KEY") or os.environ.get("WINDSOR_API_KEY", "").strip()
+    if not key:
+        print("\nERROR: WINDSOR_API_KEY not found.\n")
+        print("This tool reads your Windsor.ai key from a .env file to keep it out of shell")
+        print("history, process lists, and Claude conversation logs.\n")
+        print("To fix:")
+        print(f"  1. Create {env_path}")
+        print(f"  2. Add this line:  WINDSOR_API_KEY=your_key_here")
+        print(f"  3. Re-run this script.\n")
+        print("Get a key at https://windsor.ai (Instagram connector).")
+        sys.exit(2)
+    # Sanity-check: obvious pasted-with-quotes or space issues
+    if any(c.isspace() for c in key):
+        print("\nERROR: WINDSOR_API_KEY contains whitespace — check your .env for stray spaces.")
+        sys.exit(2)
+    return key
+
+
 def main():
-    p = argparse.ArgumentParser()
-    p.add_argument("--api-key", required=True, help="Windsor.ai Instagram connector API key")
+    p = argparse.ArgumentParser(
+        description="Instagram Reels analysis — loads WINDSOR_API_KEY from .env",
+    )
     p.add_argument("--output-dir", required=True, help="Directory to write all artifacts")
+    p.add_argument("--env-file", default=".env",
+                   help="Path to .env file containing WINDSOR_API_KEY (default: ./.env)")
     p.add_argument("--top-n", type=int, default=25, help="Number of reels to download + transcribe (default: 25)")
     p.add_argument("--whisper-model", default="small.en", help="Whisper model (tiny.en, base.en, small.en, medium.en)")
     p.add_argument("--date-from", default=None, help="Override start date (YYYY-MM-DD). Default: auto-detect ~2 years back")
     p.add_argument("--date-to", default=None, help="Override end date (YYYY-MM-DD). Default: today")
     args = p.parse_args()
+
+    # Explicitly reject --api-key to prevent accidental CLI leaks
+    if any(a.startswith("--api-key") for a in sys.argv[1:]):
+        print("ERROR: --api-key is not accepted on the command line (prevents shell-history leaks).")
+        print("Put WINDSOR_API_KEY in a .env file instead. See --help.")
+        sys.exit(2)
+
+    api_key = _resolve_api_key(args.env_file)
 
     root = Path(args.output_dir).expanduser().resolve()
     root.mkdir(parents=True, exist_ok=True)
@@ -735,7 +796,7 @@ def main():
     if args.date_from and args.date_to:
         date_from, date_to = args.date_from, args.date_to
     else:
-        date_from, date_to = detect_account_date_range(args.api_key, root / "data")
+        date_from, date_to = detect_account_date_range(api_key, root / "data")
         if args.date_from: date_from = args.date_from
         if args.date_to: date_to = args.date_to
 
@@ -745,14 +806,14 @@ def main():
     print(f"Top-N: {args.top_n} · Whisper: {args.whisper_model}\n")
 
     # Step 1: media info
-    media_info = fetch_media_info(args.api_key, root / "data", date_from, date_to)
+    media_info = fetch_media_info(api_key, root / "data", date_from, date_to)
     if not media_info:
         print("Failed to fetch media_info — aborting.")
         sys.exit(1)
     print(f"\nFound {len(media_info)} posts")
 
     # Step 2: insights (chunked)
-    insights = fetch_insights_chunked(args.api_key, root / "data", date_from, date_to)
+    insights = fetch_insights_chunked(api_key, root / "data", date_from, date_to)
 
     # Step 3: rank
     ranked = rank_reels(media_info, insights, root / "data")

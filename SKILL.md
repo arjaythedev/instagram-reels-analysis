@@ -13,17 +13,35 @@ This skill produces a full deep-dive on an Instagram Business/Creator account: r
 - A Windsor.ai Instagram connector API key connected to the target account
 - ~1 GB free disk space for downloaded videos + transcripts
 
-## Inputs to collect from the user
+## Credentials — `.env` ONLY
 
-You need **one** thing to run this:
+**NEVER ask the user to paste their Windsor API key into the chat, and NEVER accept it as a command-line flag.** Chat messages end up in logs and the agent transcript; CLI flags end up in shell history and `ps aux`. Both vectors leak keys.
 
-1. **Windsor.ai API key** — resolve in this order:
-   - Check for `.env` in the current working directory containing `WINDSOR_API_KEY=...`
-   - Check for `~/.config/windsor/api_key` or `~/.windsor_api_key`
-   - Check for `$WINDSOR_API_KEY` in the environment
-   - If none found, ask the user: *"I need your Windsor.ai Instagram API key. Paste it here, or save it to `.env` as `WINDSOR_API_KEY=...` and I'll read it from there."*
+The only supported way to pass the key is a local `.env` file:
 
-Optional:
+```
+WINDSOR_API_KEY=their_actual_key_value
+```
+
+### Resolve the key in this order, without ever seeing its value
+
+1. Check if `.env` exists in the user's current working directory AND contains a non-empty `WINDSOR_API_KEY=...` line. If yes → proceed to run the script.
+2. If `.env` doesn't exist or is missing the key, **write instructions for the user** — do not run the script and do not ask the user to paste the key. Tell them verbatim:
+
+   > I need a Windsor.ai Instagram API key to run the analysis. For security, I can't accept the key in chat — it would end up in logs. Please:
+   >
+   > 1. Create a file named `.env` in this directory
+   > 2. Add this single line (replace with your actual key): `WINDSOR_API_KEY=your_key_here`
+   > 3. Tell me once you've saved it, and I'll run the analysis.
+   >
+   > You can get a key at https://windsor.ai (Instagram connector).
+
+3. When the user confirms `.env` is saved, verify it exists (via `ls` / file check) — do NOT cat or print the file contents. Then run the script.
+
+If the user tries to paste the key anyway, **refuse and re-send the `.env` instructions**. Do not acknowledge the pasted value, do not repeat it, do not store it in memory.
+
+## Other inputs (safe to ask in chat)
+
 - **Output directory** — defaults to `./instagram-analysis` in the current working directory. Ask if the user wants somewhere else.
 - **Top-N to transcribe** — defaults to 25. Larger N means more transcription time (~2 min per reel with Whisper `small.en`).
 - **Date range** — defaults to auto-detect (~2 years back to today).
@@ -32,23 +50,18 @@ Optional:
 
 ## How to run the skill
 
-Use the orchestrator script. It handles everything: API fetches with proper chunking (Windsor hangs on wide date ranges), download, transcription, ranking, report generation, and opening the dashboard.
+Use the orchestrator script. It auto-loads `.env` from the current directory and handles everything else: API fetches with proper chunking (Windsor hangs on wide date ranges), download, transcription, ranking, report generation, and opening the dashboard.
 
 ```bash
 python3 ~/.claude/skills/instagram-reels-analysis/scripts/run_analysis.py \
-  --api-key "$WINDSOR_API_KEY" \
   --output-dir ./instagram-analysis \
   --top-n 25
 ```
 
-Or if the user saved the key to `.env`:
-
-```bash
-export $(grep -v '^#' .env | xargs) && \
-python3 ~/.claude/skills/instagram-reels-analysis/scripts/run_analysis.py \
-  --api-key "$WINDSOR_API_KEY" \
-  --output-dir ./instagram-analysis
-```
+Notes:
+- The script reads `WINDSOR_API_KEY` from `./.env` automatically — no flag needed.
+- If `.env` is elsewhere, pass `--env-file /path/to/.env`.
+- The script **explicitly refuses** a `--api-key` flag to prevent shell-history leaks.
 
 ### Expected runtime
 
