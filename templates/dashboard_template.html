@@ -249,7 +249,7 @@
       <p class="lede">Composite ranking of every post, weighted on comments, views, saves, shares, and likes. The top performers are transcribed locally with Whisper to surface hook formats, subject matter, and CTA mechanics.</p>
     </div>
     <div class="facts">
-      <div class="fact"><span class="l">Date range</span><span class="v strong">Dec 5, 2025 → Apr 16, 2026</span></div>
+      <div class="fact"><span class="l">Date range</span><span class="v strong" id="dateRange"></span></div>
       <div class="fact"><span class="l">Posts</span><span class="v strong" id="heroPosts"></span></div>
       <div class="fact"><span class="l">Transcribed</span><span class="v strong" id="heroTx"></span></div>
       <div class="fact"><span class="l">Weights</span><span class="v">C·30 V·25 S·20 Sh·15 L·10</span></div>
@@ -262,7 +262,7 @@
     <div class="section-head">
       <span class="anchor-num">01</span>
       <h2>Overview <em>vs. account baseline</em></h2>
-      <div class="desc">Top-25 cohort averages relative to all <span id="descTotalPosts"></span> posts.</div>
+      <div class="desc">Top-<span class="topN"></span> cohort averages relative to all <span id="descTotalPosts"></span> posts.</div>
     </div>
     <div class="kpis" id="kpis"></div>
   </div>
@@ -276,7 +276,7 @@
     <div class="two-col">
       <div class="chart-cell">
         <div class="chart-header">
-          <h3 class="chart-title">Stacked engagement, top 25</h3>
+          <h3 class="chart-title">Stacked engagement, top <span class="topN"></span></h3>
           <span class="chart-sub">RANK ORDER · LIKES ÷ 10</span>
         </div>
         <div class="chart-body"><canvas id="chartEngagement"></canvas></div>
@@ -294,7 +294,7 @@
   <div class="section" id="leaderboard">
     <div class="section-head">
       <span class="anchor-num">03</span>
-      <h2>Leaderboard <em>top 25</em></h2>
+      <h2>Leaderboard <em>top <span class="topN"></span></em></h2>
       <div class="desc">Click a row to expand the Whisper transcript. Click a metric header to sort.</div>
     </div>
     <div class="table-shell">
@@ -329,7 +329,7 @@
     <div class="section-head">
       <span class="anchor-num">04</span>
       <h2>All <em><span id="allTotalPosts"></span></em> posts</h2>
-      <div class="desc">Full ranked dataset. Search by caption keyword to dig into below-the-top-25 posts.</div>
+      <div class="desc">Full ranked dataset. Search by caption keyword to dig into the long tail.</div>
     </div>
     <div class="table-shell">
       <div class="toolbar">
@@ -362,7 +362,7 @@
     <div class="section-head">
       <span class="anchor-num">05</span>
       <h2>Keyword <em>density</em></h2>
-      <div class="desc">What the top 25 actually talk about — written vs. spoken.</div>
+      <div class="desc">What the top <span class="topN"></span> actually talk about — written vs. spoken.</div>
     </div>
     <div class="dual-panel" id="keywordsPanel"></div>
   </div>
@@ -401,6 +401,18 @@ const SUMMARY = __SUMMARY__;
     if (el) el.textContent = SUMMARY.total_reels.toLocaleString();
   });
 
+  const TOP_N = SUMMARY.top_n || Math.min(25, DATA.length);
+  document.querySelectorAll('.topN').forEach(el => { el.textContent = TOP_N; });
+
+  const fmtDate = (iso) => {
+    if (!iso) return '—';
+    const d = new Date(iso + 'T00:00:00');
+    if (isNaN(d)) return iso;
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  };
+  const dr = document.getElementById('dateRange');
+  if (dr) dr.textContent = fmtDate(SUMMARY.date_earliest) + ' → ' + fmtDate(SUMMARY.date_latest);
+
   const fmt = (n) => {
     if (n == null) return '—';
     if (Math.abs(n) >= 1e9) return (n/1e9).toFixed(2)+'B';
@@ -413,11 +425,11 @@ const SUMMARY = __SUMMARY__;
 
   const kpiData = [
     { label: 'Posts analyzed', value: SUMMARY.total_reels, delta: null },
-    { label: 'Median duration', value: Math.round(SUMMARY.top25_median_duration_s), unit: 's', delta: null },
-    { label: 'Avg views · top 25', value: fmt(SUMMARY.top25_avg_views), delta: pct(SUMMARY.top25_avg_views, SUMMARY.all_avg_views) + ' vs. baseline' },
-    { label: 'Avg comments · top 25', value: fmt(SUMMARY.top25_avg_comments), delta: pct(SUMMARY.top25_avg_comments, SUMMARY.all_avg_comments) + ' vs. baseline' },
-    { label: 'Avg saves · top 25', value: fmt(SUMMARY.top25_avg_saves), delta: pct(SUMMARY.top25_avg_saves, SUMMARY.all_avg_saves) + ' vs. baseline' },
-    { label: 'Avg shares · top 25', value: fmt(SUMMARY.top25_avg_shares), delta: pct(SUMMARY.top25_avg_shares, SUMMARY.all_avg_shares) + ' vs. baseline' },
+    { label: 'Median duration', value: Math.round(SUMMARY.topN_median_duration_s), unit: 's', delta: null },
+    { label: 'Avg views · top ' + TOP_N, value: fmt(SUMMARY.topN_avg_views), delta: pct(SUMMARY.topN_avg_views, SUMMARY.all_avg_views) + ' vs. baseline' },
+    { label: 'Avg comments · top ' + TOP_N, value: fmt(SUMMARY.topN_avg_comments), delta: pct(SUMMARY.topN_avg_comments, SUMMARY.all_avg_comments) + ' vs. baseline' },
+    { label: 'Avg saves · top ' + TOP_N, value: fmt(SUMMARY.topN_avg_saves), delta: pct(SUMMARY.topN_avg_saves, SUMMARY.all_avg_saves) + ' vs. baseline' },
+    { label: 'Avg shares · top ' + TOP_N, value: fmt(SUMMARY.topN_avg_shares), delta: pct(SUMMARY.topN_avg_shares, SUMMARY.all_avg_shares) + ' vs. baseline' },
   ];
   document.getElementById('kpis').innerHTML = kpiData.map(k =>
     '<div class="kpi">' +
@@ -429,7 +441,7 @@ const SUMMARY = __SUMMARY__;
     '</div>'
   ).join('');
 
-  const top25 = DATA.slice(0, 25);
+  const topReels = DATA.slice(0, TOP_N);
 
   const cs = getComputedStyle(document.documentElement);
   const accent = cs.getPropertyValue('--accent').trim();
@@ -451,12 +463,12 @@ const SUMMARY = __SUMMARY__;
   new Chart(document.getElementById('chartEngagement'), {
     type: 'bar',
     data: {
-      labels: top25.map(r => '#' + String(r.rank).padStart(2, '0') + '  ' + r.shortcode),
+      labels: topReels.map(r => '#' + String(r.rank).padStart(2, '0') + '  ' + r.shortcode),
       datasets: [
-        { label: 'Comments', data: top25.map(r => r.comments), backgroundColor: accent, borderSkipped: false, barPercentage: 0.82 },
-        { label: 'Saves',    data: top25.map(r => r.saves),    backgroundColor: chart2, borderSkipped: false, barPercentage: 0.82 },
-        { label: 'Shares',   data: top25.map(r => r.shares),   backgroundColor: chart3, borderSkipped: false, barPercentage: 0.82 },
-        { label: 'Likes ÷10',data: top25.map(r => r.likes/10), backgroundColor: chart4, borderSkipped: false, barPercentage: 0.82 },
+        { label: 'Comments', data: topReels.map(r => r.comments), backgroundColor: accent, borderSkipped: false, barPercentage: 0.82 },
+        { label: 'Saves',    data: topReels.map(r => r.saves),    backgroundColor: chart2, borderSkipped: false, barPercentage: 0.82 },
+        { label: 'Shares',   data: topReels.map(r => r.shares),   backgroundColor: chart3, borderSkipped: false, barPercentage: 0.82 },
+        { label: 'Likes ÷10',data: topReels.map(r => r.likes/10), backgroundColor: chart4, borderSkipped: false, barPercentage: 0.82 },
       ]
     },
     options: {
@@ -496,24 +508,23 @@ const SUMMARY = __SUMMARY__;
         data: scatterData,
         pointBackgroundColor: (c) => {
           const rk = c.raw ? c.raw.rank : 999;
-          if (rk <= 10) return accent;
-          if (rk <= 25) return 'transparent';
+          if (rk <= Math.ceil(TOP_N / 2.5)) return accent;
+          if (rk <= TOP_N) return 'transparent';
           return inkGhost;
         },
         pointBorderColor: (c) => {
           const rk = c.raw ? c.raw.rank : 999;
-          if (rk <= 10) return accent;
-          if (rk <= 25) return accent;
+          if (rk <= TOP_N) return accent;
           return inkGhost;
         },
-        pointBorderWidth: (c) => (c.raw && c.raw.rank <= 25) ? 1.5 : 0,
+        pointBorderWidth: (c) => (c.raw && c.raw.rank <= TOP_N) ? 1.5 : 0,
         pointRadius: (c) => {
           const rk = c.raw ? c.raw.rank : 999;
-          if (rk <= 10) return 6;
-          if (rk <= 25) return 4.5;
+          if (rk <= Math.ceil(TOP_N / 2.5)) return 6;
+          if (rk <= TOP_N) return 4.5;
           return 2.5;
         },
-        pointHoverRadius: (c) => (c.raw && c.raw.rank <= 10) ? 8 : 6
+        pointHoverRadius: (c) => (c.raw && c.raw.rank <= Math.ceil(TOP_N / 2.5)) ? 8 : 6
       }]
     },
     options: {
@@ -549,7 +560,7 @@ const SUMMARY = __SUMMARY__;
     return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
 
-  let top25Sorted = top25.slice();
+  let topReelsSorted = topReels.slice();
   function renderTop25(list) {
     const tbody = document.querySelector('#tbl tbody');
     tbody.innerHTML = list.map(r => {
@@ -575,18 +586,18 @@ const SUMMARY = __SUMMARY__;
       );
     }).join('');
   }
-  renderTop25(top25Sorted);
+  renderTop25(topReelsSorted);
 
   function renderAll(list) {
     const tbody = document.querySelector('#tblAll tbody');
     tbody.innerHTML = list.map(r => {
-      const scoreColor = r.rank <= 25 ? 'var(--accent)' : 'var(--ink-muted)';
-      const capColor = r.rank <= 25 ? 'var(--ink-2)' : 'var(--ink-muted)';
+      const scoreColor = r.rank <= TOP_N ? 'var(--accent)' : 'var(--ink-muted)';
+      const capColor = r.rank <= TOP_N ? 'var(--ink-2)' : 'var(--ink-muted)';
       return (
         '<tr>' +
           '<td><span class="rank-tag ' + rankClass(r.rank) + '">' + String(r.rank).padStart(3,'0') + '</span></td>' +
           '<td class="date-cell">' + r.timestamp + '</td>' +
-          '<td class="num ' + (r.rank <= 25 ? 'strong' : '') + '">' + fmt(r.views) + '</td>' +
+          '<td class="num ' + (r.rank <= TOP_N ? 'strong' : '') + '">' + fmt(r.views) + '</td>' +
           '<td class="num">' + fmt(r.comments) + '</td>' +
           '<td class="num">' + fmt(r.saves) + '</td>' +
           '<td class="num">' + fmt(r.shares) + '</td>' +
@@ -614,8 +625,8 @@ const SUMMARY = __SUMMARY__;
     return Object.entries(freq).sort((a,b) => b[1]-a[1]).slice(0, n);
   }
 
-  const captionKeywords = topWords(top25.map(r => r.caption), 32);
-  const transcriptKeywords = topWords(top25.map(r => r.transcript), 32);
+  const captionKeywords = topWords(topReels.map(r => r.caption), 32);
+  const transcriptKeywords = topWords(topReels.map(r => r.transcript), 32);
 
   document.getElementById('keywordsPanel').innerHTML =
     '<div class="panel-cell">' +
@@ -635,7 +646,7 @@ const SUMMARY = __SUMMARY__;
     { name: 'Question opener', sub: '"have you ever…?", "what\'s the difference?"', re: /^(have you|did you|ever (?:wonder|noticed)|what\'?s the)/i, high: false },
     { name: 'News / novelty', sub: '"just announced…", "Claude can now…"', re: /(just announced|can now|just (?:dropped|launched|released))/i, high: true }
   ];
-  const hooks = top25.filter(r => r.hook).map(r => ({ hook: r.hook, rank: r.rank }));
+  const hooks = topReels.filter(r => r.hook).map(r => ({ hook: r.hook, rank: r.rank }));
   const counts = patterns.map(p => ({
     name: p.name, sub: p.sub, high: p.high,
     hits: hooks.filter(h => p.re.test(h.hook))
@@ -658,7 +669,7 @@ const SUMMARY = __SUMMARY__;
 
   document.getElementById('tblSearch').addEventListener('input', (e) => {
     const q = e.target.value.toLowerCase();
-    const filtered = top25Sorted.filter(r =>
+    const filtered = topReelsSorted.filter(r =>
       (r.shortcode + ' ' + (r.caption||'') + ' ' + (r.hook||'') + ' ' + (r.transcript||'')).toLowerCase().indexOf(q) >= 0
     );
     renderTop25(filtered);
@@ -685,12 +696,12 @@ const SUMMARY = __SUMMARY__;
       document.querySelectorAll('#tbl th[data-sort]').forEach(x => x.classList.remove('sort-active'));
       th.classList.add('sort-active');
       if (key === activeSort) {
-        top25Sorted = top25Sorted.slice().reverse();
+        topReelsSorted = topReelsSorted.slice().reverse();
       } else {
-        top25Sorted = top25.slice().sort((a,b) => (b[key]||0) - (a[key]||0));
+        topReelsSorted = topReels.slice().sort((a,b) => (b[key]||0) - (a[key]||0));
         activeSort = key;
       }
-      renderTop25(top25Sorted);
+      renderTop25(topReelsSorted);
     });
   });
 

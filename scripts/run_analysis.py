@@ -274,7 +274,7 @@ def download_and_transcribe(top_reels, root, model="small.en"):
 
 # ---------------- Report builder ----------------
 
-def build_report(ranked, root):
+def build_report(ranked, root, top_n=25):
     videos = root / "videos"
     transcripts = root / "transcripts"
     output = root / "output"
@@ -348,18 +348,24 @@ def build_report(ranked, root):
     def avg(xs):
         xs = [x for x in xs if x]
         return sum(xs) / len(xs) if xs else 0
-    top25 = dashboard_data[:25]
-    top25_durs = [r["duration_s"] for r in top25 if r["duration_s"]]
+
+    top_n_effective = min(top_n, len(dashboard_data))
+    top_cohort = dashboard_data[:top_n_effective]
+    top_durs = [r["duration_s"] for r in top_cohort if r["duration_s"]]
+    dates = sorted([r["timestamp"] for r in dashboard_data if r.get("timestamp")])
     summary = {
         "account": ranked[0].get("account_name", "") if ranked else "",
         "total_reels": len(dashboard_data),
-        "top25_avg_duration_s": avg(top25_durs),
-        "top25_median_duration_s": sorted(top25_durs)[len(top25_durs)//2] if top25_durs else 0,
-        "top25_avg_views": avg([r["views"] for r in top25]),
-        "top25_avg_comments": avg([r["comments"] for r in top25]),
-        "top25_avg_saves": avg([r["saves"] for r in top25]),
-        "top25_avg_shares": avg([r["shares"] for r in top25]),
-        "top25_avg_likes": avg([r["likes"] for r in top25]),
+        "top_n": top_n_effective,
+        "date_earliest": dates[0] if dates else "",
+        "date_latest": dates[-1] if dates else "",
+        "topN_avg_duration_s": avg(top_durs),
+        "topN_median_duration_s": sorted(top_durs)[len(top_durs)//2] if top_durs else 0,
+        "topN_avg_views": avg([r["views"] for r in top_cohort]),
+        "topN_avg_comments": avg([r["comments"] for r in top_cohort]),
+        "topN_avg_saves": avg([r["saves"] for r in top_cohort]),
+        "topN_avg_shares": avg([r["shares"] for r in top_cohort]),
+        "topN_avg_likes": avg([r["likes"] for r in top_cohort]),
         "all_avg_views": avg([r["views"] for r in dashboard_data]),
         "all_avg_comments": avg([r["comments"] for r in dashboard_data]),
         "all_avg_saves": avg([r["saves"] for r in dashboard_data]),
@@ -460,7 +466,7 @@ def main():
     download_and_transcribe(top_reels, root, model=args.whisper_model)
 
     # Step 6: build report (uses ALL ranked, but only top-N have transcripts)
-    dashboard_path = build_report(ranked, root)
+    dashboard_path = build_report(ranked, root, top_n=args.top_n)
 
     # Step 7: open
     if sys.platform == "darwin":
