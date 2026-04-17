@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>__ACCOUNT__ · Reels Performance</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="preconnect" href="https://fonts.bunny.net" />
+<link href="https://fonts.bunny.net/css?family=fraunces:400,500,500i,600|instrument-sans:400,500,600|jetbrains-mono:400,500" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --paper: #f7f4ec;
+    --paper-2: #f1ede2;
+    --surface: #fdfcf7;
+    --surface-raised: #ffffff;
+
+    --line: rgba(28, 24, 20, 0.08);
+    --line-2: rgba(28, 24, 20, 0.14);
+    --line-strong: rgba(28, 24, 20, 0.22);
+
+    --ink: #1a1614;
+    --ink-2: #2d2622;
+    --ink-dim: #4a413c;
+    --ink-muted: #77695f;
+    --ink-faint: #a59a8e;
+    --ink-ghost: #c5bdb1;
+
+    --accent: #a8322a;
+    --accent-warm: #c85a3e;
+    --accent-wash: rgba(168, 50, 42, 0.09);
+    --accent-ink: #fff8f5;
+
+    --positive: #5a7a3a;
+
+    --chart-2: #c9b475;
+    --chart-3: #7a8373;
+    --chart-4: #8a7a6a;
+
+    --serif: 'Fraunces', 'Georgia', serif;
+    --sans: 'Instrument Sans', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+
+    --radius: 4px;
+    --radius-md: 6px;
+
+    --nav-h: 52px;
+    --maxw: 1440px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 13px;
+    line-height: 1.5;
+    letter-spacing: -0.003em;
+    font-feature-settings: 'ss01', 'ss02';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.35;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+  }
+
+  nav.top { position: sticky; top: 0; z-index: 20; background: rgba(247, 244, 236, 0.88); backdrop-filter: saturate(140%) blur(10px); -webkit-backdrop-filter: saturate(140%) blur(10px); border-bottom: 1px solid var(--line-2); height: var(--nav-h); }
+  .nav-inner { max-width: var(--maxw); margin: 0 auto; padding: 0 28px; height: 100%; display: flex; align-items: center; gap: 24px; }
+  .brand { display: flex; align-items: baseline; gap: 10px; font-family: var(--serif); font-weight: 500; font-size: 16px; letter-spacing: -0.01em; color: var(--ink); }
+  .brand::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); align-self: center; }
+  .brand em { font-family: var(--sans); font-style: normal; font-size: 12px; font-weight: 400; color: var(--ink-muted); letter-spacing: 0; }
+  .nav-links { display: flex; align-items: center; gap: 2px; margin-left: 16px; }
+  .nav-links a { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-muted); text-decoration: none; padding: 7px 12px; border-radius: var(--radius); transition: all 150ms ease; }
+  .nav-links a:hover { color: var(--ink); background: var(--paper-2); }
+  .nav-right { margin-left: auto; display: flex; align-items: center; gap: 14px; font-family: var(--mono); font-size: 11px; color: var(--ink-muted); letter-spacing: 0.04em; }
+  .nav-right .sep { width: 1px; height: 16px; background: var(--line-2); }
+  .nav-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; background: var(--paper-2); border: 1px solid var(--line-2); border-radius: 99px; color: var(--ink-2); }
+  .nav-pill .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--positive); }
+
+  .wrap { position: relative; z-index: 1; max-width: var(--maxw); margin: 0 auto; padding: 28px 28px 40px; }
+
+  .hero { display: grid; grid-template-columns: 1.4fr 1fr; gap: 32px; padding: 0 0 24px; border-bottom: 1px solid var(--line); margin-bottom: 24px; align-items: end; }
+  .hero h1 { font-family: var(--serif); font-weight: 500; font-size: 30px; line-height: 1.1; letter-spacing: -0.022em; margin: 0 0 6px; color: var(--ink); font-variation-settings: 'opsz' 36; }
+  .hero h1 em { font-style: italic; font-weight: 500; color: var(--accent); font-variation-settings: 'opsz' 36, 'SOFT' 60; }
+  .hero p.lede { color: var(--ink-dim); font-size: 14px; line-height: 1.55; margin: 0; max-width: 72ch; }
+  .hero .facts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 20px; padding: 14px 18px; border: 1px solid var(--line-2); border-radius: var(--radius-md); background: var(--surface); }
+  .fact { display: flex; flex-direction: column; gap: 2px; }
+  .fact .l { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); }
+  .fact .v { font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .fact .v.strong { color: var(--ink); font-weight: 500; }
+
+  .section { margin-bottom: 28px; scroll-margin-top: calc(var(--nav-h) + 16px); }
+  .section-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .section-head h2 { font-family: var(--serif); font-weight: 500; font-size: 17px; letter-spacing: -0.012em; color: var(--ink); margin: 0; font-variation-settings: 'opsz' 20; }
+  .section-head h2 em { font-style: italic; color: var(--ink-dim); font-variation-settings: 'opsz' 20, 'SOFT' 60; }
+  .section-head .desc { color: var(--ink-muted); font-size: 12.5px; margin-left: auto; }
+  .section-head .anchor-num { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; color: var(--accent); font-weight: 500; text-transform: uppercase; }
+
+  .kpis { display: grid; grid-template-columns: repeat(6, 1fr); border: 1px solid var(--line-2); border-radius: var(--radius-md); overflow: hidden; background: var(--surface); }
+  .kpi { padding: 16px 18px; border-right: 1px solid var(--line); display: flex; flex-direction: column; justify-content: space-between; min-height: 96px; transition: background 150ms ease; }
+  .kpi:last-child { border-right: none; }
+  .kpi:hover { background: var(--surface-raised); }
+  .kpi .label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-muted); margin-bottom: 10px; }
+  .kpi .value { font-family: var(--serif); font-weight: 500; font-size: 26px; line-height: 1; letter-spacing: -0.022em; color: var(--ink); font-variation-settings: 'opsz' 36; font-variant-numeric: tabular-nums lining-nums; }
+  .kpi .unit { font-family: var(--sans); font-size: 12px; color: var(--ink-muted); font-weight: 400; margin-left: 3px; letter-spacing: 0; }
+  .kpi .delta { margin-top: 6px; font-family: var(--mono); font-size: 10.5px; color: var(--positive); letter-spacing: 0.02em; display: inline-flex; align-items: center; gap: 4px; }
+  .kpi .delta::before { content: '↑'; font-size: 10px; }
+  .kpi .delta.neg { color: var(--accent); }
+  .kpi .delta.neg::before { content: '↓'; }
+
+  @media (max-width: 1100px) {
+    .kpis { grid-template-columns: repeat(3, 1fr); }
+    .kpi:nth-child(3n) { border-right: none; }
+    .kpi:nth-child(-n+3) { border-bottom: 1px solid var(--line); }
+  }
+
+  .two-col { display: grid; grid-template-columns: 1.2fr 1fr; gap: 0; border: 1px solid var(--line-2); border-radius: var(--radius-md); background: var(--surface); overflow: hidden; }
+  .chart-cell { padding: 16px 20px; border-right: 1px solid var(--line); min-height: 340px; }
+  .chart-cell:last-child { border-right: none; }
+  .chart-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+  .chart-title { font-family: var(--serif); font-size: 14px; font-weight: 500; letter-spacing: -0.01em; color: var(--ink); margin: 0; }
+  .chart-sub { font-family: var(--mono); color: var(--ink-faint); font-size: 10.5px; letter-spacing: 0.04em; }
+  .chart-body { height: 300px; position: relative; }
+
+  .table-shell { border: 1px solid var(--line-2); border-radius: var(--radius-md); background: var(--surface); overflow: hidden; }
+  .toolbar { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--line); gap: 14px; background: var(--surface-raised); }
+  .toolbar-left { display: flex; align-items: center; gap: 10px; color: var(--ink-muted); font-size: 12px; }
+  .btn-ghost { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 10px; background: transparent; border: 1px solid var(--line-2); color: var(--ink-2); border-radius: var(--radius); text-decoration: none; cursor: pointer; transition: all 150ms ease; }
+  .btn-ghost:hover { background: var(--paper-2); color: var(--ink); border-color: var(--line-strong); }
+  kbd { font-family: var(--mono); font-size: 10px; padding: 2px 6px; border: 1px solid var(--line-2); border-radius: 3px; color: var(--ink-2); background: var(--paper); box-shadow: 0 1px 0 rgba(28,24,20,0.05); }
+
+  .search-input { background: var(--paper); border: 1px solid var(--line-2); color: var(--ink); padding: 7px 12px 7px 32px; border-radius: var(--radius); width: 240px; font-family: var(--sans); font-size: 12.5px; transition: border-color 150ms ease, box-shadow 150ms ease; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='%2377695f' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 11px center; }
+  .search-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-wash); }
+  .search-input::placeholder { color: var(--ink-faint); }
+
+  .table-wrap { overflow-x: auto; }
+  .table-wrap.scroll-y { max-height: 560px; overflow-y: auto; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  thead { position: sticky; top: 0; z-index: 3; background: var(--surface-raised); }
+  th { text-align: left; font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-muted); padding: 10px 12px; border-bottom: 1px solid var(--line-2); font-weight: 500; white-space: nowrap; user-select: none; background: var(--surface-raised); }
+  th[data-sort] { cursor: pointer; transition: color 150ms ease; }
+  th[data-sort]:hover { color: var(--ink); }
+  th[data-sort]::after { content: '↕'; display: inline-block; margin-left: 5px; opacity: 0.3; font-size: 9px; }
+  th[data-sort]:hover::after { opacity: 0.7; }
+  th[data-sort].sort-active { color: var(--accent); }
+  th[data-sort].sort-active::after { content: '↓'; opacity: 1; color: var(--accent); }
+
+  td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--ink-2); }
+  tbody tr { transition: background 120ms ease; }
+  tbody tr:hover td { background: rgba(168, 50, 42, 0.03); color: var(--ink); }
+  tbody tr:last-child td { border-bottom: none; }
+
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; font-size: 12px; color: var(--ink-2); }
+  .num.strong { color: var(--ink); font-weight: 500; }
+  .date-cell { font-family: var(--mono); font-size: 11.5px; color: var(--ink-muted); white-space: nowrap; }
+
+  .rank-tag { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 22px; padding: 0 7px; font-family: var(--mono); font-size: 10.5px; font-weight: 500; color: var(--ink-muted); background: var(--paper-2); border: 1px solid var(--line-2); border-radius: 3px; font-variant-numeric: tabular-nums; }
+  .rank-tag.top5 { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+  .rank-tag.top10 { color: var(--accent); background: var(--accent-wash); border-color: rgba(168, 50, 42, 0.3); }
+
+  .hook-line { color: var(--ink); font-size: 13px; line-height: 1.45; font-family: var(--serif); font-weight: 500; font-variation-settings: 'opsz' 16; max-width: 56ch; display: inline; }
+  .caption-line { color: var(--ink-muted); font-size: 11.5px; margin-top: 5px; line-height: 1.45; max-width: 56ch; }
+  .hook-badge { display: inline-block; font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; padding: 1px 6px; color: var(--accent); background: var(--accent-wash); border-radius: 3px; margin-right: 8px; vertical-align: middle; position: relative; top: -1px; font-weight: 500; }
+
+  details { margin-top: 8px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  details summary { cursor: pointer; padding: 6px 12px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.06em; color: var(--ink-muted); list-style: none; display: flex; align-items: center; gap: 8px; user-select: none; transition: color 150ms ease; }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::before { content: '+'; font-size: 13px; width: 11px; color: var(--ink-faint); display: inline-block; }
+  details[open] summary::before { content: '−'; }
+  details summary:hover { color: var(--accent); }
+  details[open] summary { color: var(--accent); border-bottom: 1px solid var(--line); }
+  .transcript { padding: 14px 16px 16px; font-family: var(--serif); font-size: 13.5px; line-height: 1.65; color: var(--ink-2); max-height: 300px; overflow-y: auto; font-feature-settings: 'liga', 'calt'; font-variation-settings: 'opsz' 18; background: var(--surface-raised); }
+
+  .permalink { color: var(--ink-faint); text-decoration: none; font-size: 14px; transition: color 150ms ease, transform 150ms ease; display: inline-block; }
+  .permalink:hover { color: var(--accent); transform: translate(1px, -1px); }
+
+  .chip-group { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chip { display: inline-flex; align-items: baseline; gap: 6px; padding: 4px 10px; background: var(--surface-raised); border: 1px solid var(--line-2); border-radius: 99px; font-size: 12px; color: var(--ink-2); font-family: var(--sans); transition: all 120ms ease; }
+  .chip:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-wash); }
+  .chip .c { font-family: var(--mono); font-size: 10px; color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 500; }
+
+  .dual-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--line-2); border-radius: var(--radius-md); background: var(--surface); overflow: hidden; }
+  .panel-cell { padding: 16px 20px; border-right: 1px solid var(--line); }
+  .panel-cell:last-child { border-right: none; }
+  .panel-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-muted); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; justify-content: space-between; }
+  .panel-label em { font-style: normal; color: var(--ink-faint); text-transform: none; letter-spacing: 0; font-family: var(--sans); font-size: 11px; }
+
+  .hooks-panel { border: 1px solid var(--line-2); border-radius: var(--radius-md); background: var(--surface); padding: 18px 22px 22px; }
+  .hook-list { display: flex; flex-direction: column; gap: 16px; }
+  .hook-row { display: grid; grid-template-columns: minmax(260px, 1.2fr) 3fr auto; gap: 18px; align-items: center; }
+  .hook-name { font-family: var(--serif); font-weight: 500; font-size: 14px; letter-spacing: -0.01em; color: var(--ink); font-variation-settings: 'opsz' 16; }
+  .hook-name em { font-style: italic; color: var(--ink-muted); font-size: 12px; display: block; margin-top: 2px; font-family: var(--serif); font-weight: 400; font-variation-settings: 'opsz' 14; }
+  .hook-bar { height: 4px; background: var(--paper-2); border-radius: 2px; overflow: hidden; }
+  .hook-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 600ms cubic-bezier(.2,.6,.2,1); }
+  .hook-bar.sub .hook-bar-fill { background: var(--ink-ghost); }
+  .hook-count { font-family: var(--mono); font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 500; }
+  .hook-count .total { color: var(--ink-faint); font-weight: 400; }
+  .hook-example { grid-column: 2 / 4; margin-top: -4px; font-family: var(--serif); font-style: italic; font-size: 12.5px; color: var(--ink-dim); line-height: 1.5; border-left: 2px solid var(--line-2); padding-left: 12px; font-variation-settings: 'opsz' 14; }
+  .hook-example .rank-mark { font-family: var(--mono); font-style: normal; font-size: 10.5px; color: var(--ink-faint); margin-left: 8px; letter-spacing: 0.04em; }
+
+  footer { margin-top: 40px; padding: 20px 0 16px; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  footer .line { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.1em; color: var(--ink-muted); text-transform: uppercase; }
+  footer .sig { font-family: var(--serif); font-style: italic; color: var(--ink-faint); font-size: 12px; }
+
+  ::selection { background: var(--accent); color: var(--accent-ink); }
+
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 5px; border: 2px solid var(--paper); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--ink-faint); }
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="nav-inner">
+    <div class="brand">__ACCOUNT__ <em>Reels Performance</em></div>
+    <div class="nav-links">
+      <a href="#overview">Overview</a>
+      <a href="#charts">Engagement</a>
+      <a href="#leaderboard">Leaderboard</a>
+      <a href="#all">All posts</a>
+      <a href="#keywords">Keywords</a>
+      <a href="#hooks">Hooks</a>
+    </div>
+    <div class="nav-right">
+      <span class="nav-pill"><span class="dot"></span> Live · <span id="navPosts"></span> posts</span>
+      <span class="sep"></span>
+      <a class="btn-ghost" href="reels_analysis.csv" download>Export CSV</a>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div>
+      <h1>Reels performance, <em>ranked &amp; transcribed</em></h1>
+      <p class="lede">Composite ranking of 237 posts from December 2025 through April 2026. Top 25 transcribed locally with Whisper to surface hook formats, subject matter, and the comment-keyword CTA funnel driving Maven lecture signups.</p>
+    </div>
+    <div class="facts">
+      <div class="fact"><span class="l">Date range</span><span class="v strong">Dec 5, 2025 → Apr 16, 2026</span></div>
+      <div class="fact"><span class="l">Posts</span><span class="v strong" id="heroPosts"></span></div>
+      <div class="fact"><span class="l">Transcribed</span><span class="v strong" id="heroTx"></span></div>
+      <div class="fact"><span class="l">Weights</span><span class="v">C·30 V·25 S·20 Sh·15 L·10</span></div>
+      <div class="fact"><span class="l">Data</span><span class="v">Windsor.ai · media_views</span></div>
+      <div class="fact"><span class="l">As of</span><span class="v" id="heroDate"></span></div>
+    </div>
+  </div>
+
+  <div class="section" id="overview">
+    <div class="section-head">
+      <span class="anchor-num">01</span>
+      <h2>Overview <em>vs. account baseline</em></h2>
+      <div class="desc">Top-25 cohort averages relative to all 237 posts.</div>
+    </div>
+    <div class="kpis" id="kpis"></div>
+  </div>
+
+  <div class="section" id="charts">
+    <div class="section-head">
+      <span class="anchor-num">02</span>
+      <h2>Engagement <em>shape</em></h2>
+      <div class="desc">Stacked per-reel breakdown and duration × score distribution.</div>
+    </div>
+    <div class="two-col">
+      <div class="chart-cell">
+        <div class="chart-header">
+          <h3 class="chart-title">Stacked engagement, top 25</h3>
+          <span class="chart-sub">RANK ORDER · LIKES ÷ 10</span>
+        </div>
+        <div class="chart-body"><canvas id="chartEngagement"></canvas></div>
+      </div>
+      <div class="chart-cell">
+        <div class="chart-header">
+          <h3 class="chart-title">Duration × composite score</h3>
+          <span class="chart-sub">ALL 237 REELS</span>
+        </div>
+        <div class="chart-body"><canvas id="chartDuration"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="leaderboard">
+    <div class="section-head">
+      <span class="anchor-num">03</span>
+      <h2>Leaderboard <em>top 25</em></h2>
+      <div class="desc">Click a row to expand the Whisper transcript. Click a metric header to sort.</div>
+    </div>
+    <div class="table-shell">
+      <div class="toolbar">
+        <div class="toolbar-left">Press <kbd>/</kbd> to focus search</div>
+        <input type="text" class="search-input" id="tblSearch" placeholder="Search captions, hooks, transcripts…" />
+      </div>
+      <div class="table-wrap">
+        <table id="tbl">
+          <thead>
+            <tr>
+              <th style="width: 60px;">Rank</th>
+              <th style="width: 98px;">Posted</th>
+              <th style="width: 52px;">Dur</th>
+              <th class="num" data-sort="views" style="width: 72px;">Views</th>
+              <th class="num" data-sort="comments" style="width: 64px;">Comm</th>
+              <th class="num" data-sort="saves" style="width: 70px;">Saves</th>
+              <th class="num" data-sort="shares" style="width: 72px;">Shares</th>
+              <th class="num" data-sort="likes" style="width: 70px;">Likes</th>
+              <th class="num" data-sort="score" style="width: 60px;">Score</th>
+              <th>Hook &amp; subject</th>
+              <th style="width: 36px;"></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="all">
+    <div class="section-head">
+      <span class="anchor-num">04</span>
+      <h2>All <em>237</em> posts</h2>
+      <div class="desc">Full ranked dataset. Search by caption keyword to dig into below-the-top-25 posts.</div>
+    </div>
+    <div class="table-shell">
+      <div class="toolbar">
+        <div class="toolbar-left">Sorted by composite score, descending</div>
+        <input type="text" class="search-input" id="tblAllSearch" placeholder="Search all posts…" />
+      </div>
+      <div class="table-wrap scroll-y">
+        <table id="tblAll">
+          <thead>
+            <tr>
+              <th style="width: 60px;">Rank</th>
+              <th style="width: 98px;">Posted</th>
+              <th class="num" style="width: 72px;">Views</th>
+              <th class="num" style="width: 64px;">Comm</th>
+              <th class="num" style="width: 70px;">Saves</th>
+              <th class="num" style="width: 72px;">Shares</th>
+              <th class="num" style="width: 70px;">Likes</th>
+              <th class="num" style="width: 60px;">Score</th>
+              <th>Caption</th>
+              <th style="width: 36px;"></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="keywords">
+    <div class="section-head">
+      <span class="anchor-num">05</span>
+      <h2>Keyword <em>density</em></h2>
+      <div class="desc">What the top 25 actually talk about — written vs. spoken.</div>
+    </div>
+    <div class="dual-panel" id="keywordsPanel"></div>
+  </div>
+
+  <div class="section" id="hooks">
+    <div class="section-head">
+      <span class="anchor-num">06</span>
+      <h2>Hook <em>patterns</em></h2>
+      <div class="desc">First-sentence openers classified. Red = drives comments · gray = saves but low comments.</div>
+    </div>
+    <div class="hooks-panel">
+      <div class="hook-list" id="hooksPanel"></div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="line">Compiled locally · Whisper small.en · Windsor.ai</div>
+    <div class="sig">As of <span id="genDate"></span></div>
+  </footer>
+
+</div>
+
+<script>
+const DATA = __DATA__;
+const SUMMARY = __SUMMARY__;
+
+(function init() {
+  const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  document.getElementById('genDate').textContent = today;
+  document.getElementById('heroDate').textContent = today;
+  document.getElementById('heroPosts').textContent = SUMMARY.total_reels.toLocaleString();
+  document.getElementById('heroTx').textContent = SUMMARY.transcripts_complete + ' reels';
+  document.getElementById('navPosts').textContent = SUMMARY.total_reels.toLocaleString();
+
+  const fmt = (n) => {
+    if (n == null) return '—';
+    if (Math.abs(n) >= 1e9) return (n/1e9).toFixed(2)+'B';
+    if (Math.abs(n) >= 1e6) return (n/1e6).toFixed(2)+'M';
+    if (Math.abs(n) >= 1e3) return (n/1e3).toFixed(1)+'K';
+    return Math.round(n).toLocaleString();
+  };
+  const fmtDur = (d) => d == null ? '—' : Math.round(d) + 's';
+  const pct = (a, b) => b ? '+' + ((a / b - 1) * 100).toFixed(0) + '%' : '—';
+
+  const kpiData = [
+    { label: 'Posts analyzed', value: SUMMARY.total_reels, delta: null },
+    { label: 'Median duration', value: Math.round(SUMMARY.top25_median_duration_s), unit: 's', delta: null },
+    { label: 'Avg views · top 25', value: fmt(SUMMARY.top25_avg_views), delta: pct(SUMMARY.top25_avg_views, SUMMARY.all_avg_views) + ' vs. baseline' },
+    { label: 'Avg comments · top 25', value: fmt(SUMMARY.top25_avg_comments), delta: pct(SUMMARY.top25_avg_comments, SUMMARY.all_avg_comments) + ' vs. baseline' },
+    { label: 'Avg saves · top 25', value: fmt(SUMMARY.top25_avg_saves), delta: pct(SUMMARY.top25_avg_saves, SUMMARY.all_avg_saves) + ' vs. baseline' },
+    { label: 'Avg shares · top 25', value: fmt(SUMMARY.top25_avg_shares), delta: pct(SUMMARY.top25_avg_shares, SUMMARY.all_avg_shares) + ' vs. baseline' },
+  ];
+  document.getElementById('kpis').innerHTML = kpiData.map(k =>
+    '<div class="kpi">' +
+      '<div class="label">' + k.label + '</div>' +
+      '<div>' +
+        '<span class="value">' + k.value + (k.unit ? '<span class="unit">' + k.unit + '</span>' : '') + '</span>' +
+        (k.delta ? '<div class="delta">' + k.delta + '</div>' : '') +
+      '</div>' +
+    '</div>'
+  ).join('');
+
+  const top25 = DATA.slice(0, 25);
+
+  const cs = getComputedStyle(document.documentElement);
+  const accent = cs.getPropertyValue('--accent').trim();
+  const chart2 = cs.getPropertyValue('--chart-2').trim();
+  const chart3 = cs.getPropertyValue('--chart-3').trim();
+  const chart4 = cs.getPropertyValue('--chart-4').trim();
+  const ink = cs.getPropertyValue('--ink').trim();
+  const inkDim = cs.getPropertyValue('--ink-2').trim();
+  const inkMuted = cs.getPropertyValue('--ink-muted').trim();
+  const inkGhost = cs.getPropertyValue('--ink-ghost').trim();
+  const line = cs.getPropertyValue('--line').trim();
+  const line2 = cs.getPropertyValue('--line-2').trim();
+
+  Chart.defaults.font.family = "'Instrument Sans', system-ui, sans-serif";
+  Chart.defaults.font.size = 11;
+  Chart.defaults.color = inkMuted;
+  Chart.defaults.borderColor = line;
+
+  new Chart(document.getElementById('chartEngagement'), {
+    type: 'bar',
+    data: {
+      labels: top25.map(r => '#' + String(r.rank).padStart(2, '0') + '  ' + r.shortcode),
+      datasets: [
+        { label: 'Comments', data: top25.map(r => r.comments), backgroundColor: accent, borderSkipped: false, barPercentage: 0.82 },
+        { label: 'Saves',    data: top25.map(r => r.saves),    backgroundColor: chart2, borderSkipped: false, barPercentage: 0.82 },
+        { label: 'Shares',   data: top25.map(r => r.shares),   backgroundColor: chart3, borderSkipped: false, barPercentage: 0.82 },
+        { label: 'Likes ÷10',data: top25.map(r => r.likes/10), backgroundColor: chart4, borderSkipped: false, barPercentage: 0.82 },
+      ]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 4 } },
+      plugins: {
+        legend: { position: 'bottom', align: 'start', labels: { color: inkDim, boxWidth: 10, boxHeight: 10, padding: 12 } },
+        tooltip: {
+          backgroundColor: ink, borderWidth: 0,
+          titleColor: '#fdfcf7', titleFont: { family: "'Fraunces', serif", size: 13, weight: '500' },
+          bodyColor: '#e8e3d7', bodyFont: { family: "'JetBrains Mono', monospace", size: 11 },
+          padding: 10, cornerRadius: 3, boxPadding: 4,
+          callbacks: {
+            label: (c) => {
+              const real = c.dataset.label.indexOf('Likes') >= 0 ? c.raw * 10 : c.raw;
+              return c.dataset.label.replace(' ÷10', '') + ': ' + fmt(real);
+            }
+          }
+        }
+      },
+      scales: {
+        x: { stacked: true, ticks: { color: inkMuted, font: { family: "'JetBrains Mono', monospace", size: 10 } }, grid: { color: line, drawTicks: false }, border: { display: false } },
+        y: { stacked: true, ticks: { color: inkMuted, font: { family: "'JetBrains Mono', monospace", size: 10 } }, grid: { display: false }, border: { color: line2 } }
+      }
+    }
+  });
+
+  const scatterData = DATA.filter(r => r.duration_s != null && r.duration_s > 0).map(r => ({
+    x: r.duration_s, y: r.score, shortcode: r.shortcode, rank: r.rank
+  }));
+
+  new Chart(document.getElementById('chartDuration'), {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: '',
+        data: scatterData,
+        pointBackgroundColor: (c) => {
+          const rk = c.raw ? c.raw.rank : 999;
+          if (rk <= 10) return accent;
+          if (rk <= 25) return 'transparent';
+          return inkGhost;
+        },
+        pointBorderColor: (c) => {
+          const rk = c.raw ? c.raw.rank : 999;
+          if (rk <= 10) return accent;
+          if (rk <= 25) return accent;
+          return inkGhost;
+        },
+        pointBorderWidth: (c) => (c.raw && c.raw.rank <= 25) ? 1.5 : 0,
+        pointRadius: (c) => {
+          const rk = c.raw ? c.raw.rank : 999;
+          if (rk <= 10) return 6;
+          if (rk <= 25) return 4.5;
+          return 2.5;
+        },
+        pointHoverRadius: (c) => (c.raw && c.raw.rank <= 10) ? 8 : 6
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: 6 },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: ink, borderWidth: 0,
+          titleColor: '#fdfcf7', titleFont: { family: "'Fraunces', serif", size: 13, weight: '500' },
+          bodyColor: '#e8e3d7', bodyFont: { family: "'JetBrains Mono', monospace", size: 11 },
+          padding: 10, cornerRadius: 3,
+          callbacks: {
+            title: (items) => '#' + items[0].raw.rank + '  ·  ' + items[0].raw.shortcode,
+            label: (c) => c.raw.x.toFixed(1) + 's  ·  score ' + c.raw.y.toFixed(2)
+          }
+        }
+      },
+      scales: {
+        x: { title: { display: true, text: 'DURATION (SECONDS)', color: inkMuted, font: { family: "'JetBrains Mono', monospace", size: 10, weight: '500' } }, ticks: { color: inkMuted, font: { family: "'JetBrains Mono', monospace", size: 10 } }, grid: { color: line, drawTicks: false }, border: { display: false } },
+        y: { title: { display: true, text: 'COMPOSITE SCORE', color: inkMuted, font: { family: "'JetBrains Mono', monospace", size: 10, weight: '500' } }, ticks: { color: inkMuted, font: { family: "'JetBrains Mono', monospace", size: 10 } }, grid: { color: line, drawTicks: false }, border: { display: false } }
+      }
+    }
+  });
+
+  function rankClass(rank) {
+    if (rank <= 5) return 'top5';
+    if (rank <= 10) return 'top10';
+    return '';
+  }
+  function escapeHtml(s) {
+    if (s == null) return '';
+    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  let top25Sorted = top25.slice();
+  function renderTop25(list) {
+    const tbody = document.querySelector('#tbl tbody');
+    tbody.innerHTML = list.map(r => {
+      const hook = r.hook
+        ? '<span class="hook-badge">Hook</span><span class="hook-line">' + escapeHtml(r.hook) + '</span>'
+        : '<span class="hook-line" style="color: var(--ink-muted);">' + escapeHtml((r.caption||'').slice(0,200)) + '</span>';
+      const cap = r.caption ? '<div class="caption-line">' + escapeHtml(r.caption.slice(0, 240)) + (r.caption.length > 240 ? '…' : '') + '</div>' : '';
+      const tx = r.transcript ? '<details><summary>Transcript · ' + r.transcript.length.toLocaleString() + ' chars</summary><div class="transcript">' + escapeHtml(r.transcript) + '</div></details>' : '';
+      return (
+        '<tr>' +
+          '<td><span class="rank-tag ' + rankClass(r.rank) + '">' + String(r.rank).padStart(2,'0') + '</span></td>' +
+          '<td class="date-cell">' + r.timestamp + '</td>' +
+          '<td class="num">' + fmtDur(r.duration_s) + '</td>' +
+          '<td class="num strong">' + fmt(r.views) + '</td>' +
+          '<td class="num">' + fmt(r.comments) + '</td>' +
+          '<td class="num">' + fmt(r.saves) + '</td>' +
+          '<td class="num">' + fmt(r.shares) + '</td>' +
+          '<td class="num">' + fmt(r.likes) + '</td>' +
+          '<td class="num" style="color: var(--accent);">' + r.score.toFixed(2) + '</td>' +
+          '<td>' + hook + cap + tx + '</td>' +
+          '<td><a class="permalink" href="' + r.permalink + '" target="_blank" rel="noopener" title="Open on Instagram">↗</a></td>' +
+        '</tr>'
+      );
+    }).join('');
+  }
+  renderTop25(top25Sorted);
+
+  function renderAll(list) {
+    const tbody = document.querySelector('#tblAll tbody');
+    tbody.innerHTML = list.map(r => {
+      const scoreColor = r.rank <= 25 ? 'var(--accent)' : 'var(--ink-muted)';
+      const capColor = r.rank <= 25 ? 'var(--ink-2)' : 'var(--ink-muted)';
+      return (
+        '<tr>' +
+          '<td><span class="rank-tag ' + rankClass(r.rank) + '">' + String(r.rank).padStart(3,'0') + '</span></td>' +
+          '<td class="date-cell">' + r.timestamp + '</td>' +
+          '<td class="num ' + (r.rank <= 25 ? 'strong' : '') + '">' + fmt(r.views) + '</td>' +
+          '<td class="num">' + fmt(r.comments) + '</td>' +
+          '<td class="num">' + fmt(r.saves) + '</td>' +
+          '<td class="num">' + fmt(r.shares) + '</td>' +
+          '<td class="num">' + fmt(r.likes) + '</td>' +
+          '<td class="num" style="color: ' + scoreColor + ';">' + r.score.toFixed(2) + '</td>' +
+          '<td class="caption-line" style="color: ' + capColor + '; margin:0;">' + escapeHtml((r.caption||'').slice(0,240)) + (r.caption && r.caption.length > 240 ? '…' : '') + '</td>' +
+          '<td><a class="permalink" href="' + r.permalink + '" target="_blank" rel="noopener">↗</a></td>' +
+        '</tr>'
+      );
+    }).join('');
+  }
+  renderAll(DATA);
+
+  function topWords(texts, n) {
+    const stop = new Set('a an and are as at be but by for from has have how i if in into is it its just let like make more my not of on or our out she so some than that the their them then there these they this to was we were what when which who will with you your yours yourself about after also all any been can could did do does doing down each few had here him his most only other over same should such too very way up off get got use used using one two three'.split(/\s+/));
+    ["it's", "you're", "there's", "we're", "they're", "i'll", "you'll", "they'll", "we'll", "he's", "she's", "don't", "doesn't", "didn't", "won't", "can't", "that's", "what's", "i've", "i'm"].forEach(w => stop.add(w));
+    const freq = {};
+    texts.forEach(t => {
+      if (!t) return;
+      t.toLowerCase().replace(/[^a-z0-9\s']/g, ' ').split(/\s+/).forEach(w => {
+        if (w.length < 3 || stop.has(w) || /^\d+$/.test(w)) return;
+        freq[w] = (freq[w] || 0) + 1;
+      });
+    });
+    return Object.entries(freq).sort((a,b) => b[1]-a[1]).slice(0, n);
+  }
+
+  const captionKeywords = topWords(top25.map(r => r.caption), 32);
+  const transcriptKeywords = topWords(top25.map(r => r.transcript), 32);
+
+  document.getElementById('keywordsPanel').innerHTML =
+    '<div class="panel-cell">' +
+      '<div class="panel-label"><span>Caption · written</span><em>' + captionKeywords.length + ' terms</em></div>' +
+      '<div class="chip-group">' + captionKeywords.map(kv => '<span class="chip">' + kv[0] + '<span class="c">' + kv[1] + '</span></span>').join('') + '</div>' +
+    '</div>' +
+    '<div class="panel-cell">' +
+      '<div class="panel-label"><span>Transcript · spoken</span><em>' + transcriptKeywords.length + ' terms</em></div>' +
+      '<div class="chip-group">' + transcriptKeywords.map(kv => '<span class="chip">' + kv[0] + '<span class="c">' + kv[1] + '</span></span>').join('') + '</div>' +
+    '</div>';
+
+  const patterns = [
+    { name: 'Listicle / numbered', sub: '"watch these 3 videos…", "there are 5 levels of…"', re: /^((?:if you watch|watch)? ?these (?:three|3|four|4|five|5|two|2)|there are \d+ levels|top \d|(?:one|two|three|four|five|\d+) (?:things|reasons|ways|tips|signs|rules|levels|experts))/i, high: true },
+    { name: 'Imperative / exact', sub: '"here\'s exactly how…", "this is exactly how…"', re: /^(this is exactly how|here\'?s (?:exactly )?(?:how|your)|here are the)/i, high: true },
+    { name: 'Contrarian status gap', sub: '"you\'re probably stuck on…", "you\'re still a rookie"', re: /(you\'?re (?:probably|still|stuck)|if you\'?re not using|most of you|everybody wants)/i, high: true },
+    { name: 'Data-backed curiosity', sub: '"this guy analyzed N jobs…"', re: /(analyzed (?:\d|thousands|hundreds)|this (?:guy|dude) (?:analyzed|looked)|1,?\d{3} jobs)/i, high: true },
+    { name: 'Question opener', sub: '"have you ever…?", "what\'s the difference?"', re: /^(have you|did you|ever (?:wonder|noticed)|what\'?s the)/i, high: false },
+    { name: 'News / novelty', sub: '"just announced…", "Claude can now…"', re: /(just announced|can now|just (?:dropped|launched|released))/i, high: true }
+  ];
+  const hooks = top25.filter(r => r.hook).map(r => ({ hook: r.hook, rank: r.rank }));
+  const counts = patterns.map(p => ({
+    name: p.name, sub: p.sub, high: p.high,
+    hits: hooks.filter(h => p.re.test(h.hook))
+  }));
+  counts.sort((a,b) => b.hits.length - a.hits.length);
+  const maxC = Math.max(1, ...counts.map(c => c.hits.length));
+
+  document.getElementById('hooksPanel').innerHTML = counts.map(c => {
+    const example = c.hits.length
+      ? '<div class="hook-example">"' + escapeHtml(c.hits[0].hook.slice(0, 200)) + (c.hits[0].hook.length > 200 ? '…' : '') + '"<span class="rank-mark">#' + String(c.hits[0].rank).padStart(2, '0') + '</span></div>'
+      : '';
+    return (
+      '<div class="hook-row">' +
+        '<div class="hook-name">' + c.name + '<em>' + c.sub + '</em></div>' +
+        '<div class="hook-bar ' + (c.high ? '' : 'sub') + '"><div class="hook-bar-fill" style="width: ' + ((c.hits.length / maxC) * 100) + '%"></div></div>' +
+        '<div class="hook-count">' + c.hits.length + '<span class="total"> / ' + hooks.length + '</span></div>' +
+      '</div>' + example
+    );
+  }).join('');
+
+  document.getElementById('tblSearch').addEventListener('input', (e) => {
+    const q = e.target.value.toLowerCase();
+    const filtered = top25Sorted.filter(r =>
+      (r.shortcode + ' ' + (r.caption||'') + ' ' + (r.hook||'') + ' ' + (r.transcript||'')).toLowerCase().indexOf(q) >= 0
+    );
+    renderTop25(filtered);
+  });
+  document.getElementById('tblAllSearch').addEventListener('input', (e) => {
+    const q = e.target.value.toLowerCase();
+    const filtered = DATA.filter(r =>
+      (r.shortcode + ' ' + (r.caption||'')).toLowerCase().indexOf(q) >= 0
+    );
+    renderAll(filtered);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+      e.preventDefault();
+      document.getElementById('tblSearch').focus();
+    }
+  });
+
+  let activeSort = null;
+  document.querySelectorAll('#tbl th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.sort;
+      document.querySelectorAll('#tbl th[data-sort]').forEach(x => x.classList.remove('sort-active'));
+      th.classList.add('sort-active');
+      if (key === activeSort) {
+        top25Sorted = top25Sorted.slice().reverse();
+      } else {
+        top25Sorted = top25.slice().sort((a,b) => (b[key]||0) - (a[key]||0));
+        activeSort = key;
+      }
+      renderTop25(top25Sorted);
+    });
+  });
+
+  const navLinks = document.querySelectorAll('.nav-links a');
+  const sectionEls = Array.from(document.querySelectorAll('.section'));
+  const setActive = () => {
+    const y = window.scrollY + 120;
+    let active = sectionEls[0];
+    for (const s of sectionEls) { if (s.offsetTop <= y) active = s; }
+    navLinks.forEach(l => {
+      l.style.color = l.getAttribute('href') === '#' + active.id ? 'var(--accent)' : '';
+    });
+  };
+  window.addEventListener('scroll', setActive, { passive: true });
+  setActive();
+})();
+</script>
+</body>
+</html>
