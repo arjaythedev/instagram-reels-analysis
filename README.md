@@ -11,7 +11,7 @@ A Claude Code skill that produces a full deep-dive on an Instagram Business/Crea
 5. Builds a CSV spreadsheet, a JSON dataset, and an **interactive HTML dashboard** (warm paper aesthetic, Fraunces serif, Chart.js visualizations)
 6. Opens the dashboard in your default browser
 
-The dashboard includes: 6-KPI overview row, stacked-engagement bar chart, duration × score scatter, sortable leaderboard with expandable transcripts, full 237-post table with search, keyword density (written vs. spoken), and hook pattern frequency analysis.
+The dashboard includes: 6-KPI overview row, stacked-engagement bar chart, duration × score scatter, sortable leaderboard with expandable transcripts, full ranked post table with search, keyword density (written vs. spoken), and hook pattern frequency analysis.
 
 ## Install
 

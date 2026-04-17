@@ -246,7 +246,7 @@
   <div class="hero">
     <div>
       <h1>Reels performance, <em>ranked &amp; transcribed</em></h1>
-      <p class="lede">Composite ranking of 237 posts from December 2025 through April 2026. Top 25 transcribed locally with Whisper to surface hook formats, subject matter, and the comment-keyword CTA funnel driving Maven lecture signups.</p>
+      <p class="lede">Composite ranking of every post, weighted on comments, views, saves, shares, and likes. The top performers are transcribed locally with Whisper to surface hook formats, subject matter, and CTA mechanics.</p>
     </div>
     <div class="facts">
       <div class="fact"><span class="l">Date range</span><span class="v strong">Dec 5, 2025 → Apr 16, 2026</span></div>
@@ -262,7 +262,7 @@
     <div class="section-head">
       <span class="anchor-num">01</span>
       <h2>Overview <em>vs. account baseline</em></h2>
-      <div class="desc">Top-25 cohort averages relative to all 237 posts.</div>
+      <div class="desc">Top-25 cohort averages relative to all <span id="descTotalPosts"></span> posts.</div>
     </div>
     <div class="kpis" id="kpis"></div>
   </div>
@@ -284,7 +284,7 @@
       <div class="chart-cell">
         <div class="chart-header">
           <h3 class="chart-title">Duration × composite score</h3>
-          <span class="chart-sub">ALL 237 REELS</span>
+          <span class="chart-sub">ALL <span id="chartTotalPosts"></span> REELS</span>
         </div>
         <div class="chart-body"><canvas id="chartDuration"></canvas></div>
       </div>
@@ -328,7 +328,7 @@
   <div class="section" id="all">
     <div class="section-head">
       <span class="anchor-num">04</span>
-      <h2>All <em>237</em> posts</h2>
+      <h2>All <em><span id="allTotalPosts"></span></em> posts</h2>
       <div class="desc">Full ranked dataset. Search by caption keyword to dig into below-the-top-25 posts.</div>
     </div>
     <div class="table-shell">
@@ -396,6 +396,10 @@ const SUMMARY = __SUMMARY__;
   document.getElementById('heroPosts').textContent = SUMMARY.total_reels.toLocaleString();
   document.getElementById('heroTx').textContent = SUMMARY.transcripts_complete + ' reels';
   document.getElementById('navPosts').textContent = SUMMARY.total_reels.toLocaleString();
+  ['descTotalPosts', 'chartTotalPosts', 'allTotalPosts'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = SUMMARY.total_reels.toLocaleString();
+  });
 
   const fmt = (n) => {
     if (n == null) return '—';
